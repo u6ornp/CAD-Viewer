@@ -1,0 +1,72 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║              Python Installation Required for IGES Support            ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+⚠ CURRENT STATUS:
+────────────────────────────────────────────────────────────────────────
+Python is not actually installed on this system.
+
+The "python" shortcut in Windows is just a Microsoft Store placeholder,
+not a real Python installation.
+
+
+✅ SOLUTION: Install Real Python
+────────────────────────────────────────────────────────────────────────
+
+1. Download Python from: https://www.python.org/downloads/
+
+2. Click "Windows installer (64-bit)"
+   (Get version 3.10 or 3.11, NOT 3.12+)
+
+3. Run the installer and:
+   ✓ Tick "Add Python to PATH" (IMPORTANT!)
+   ✓ Tick "Install pip"
+   ✓ Click "Install Now"
+
+4. Wait for installation to complete (~1 minute)
+
+5. Restart your terminal/command prompt
+
+6. Verify installation:
+   python --version
+   (Should show something like: Python 3.11.0)
+
+7. Then run:
+   pip install pythonocc-core
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TIME REQUIREMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Download Python: 1-2 minutes
+• Install Python: 1-2 minutes
+• Install pythonocc: 5-10 minutes (it's a large package)
+• Total: ~10-15 minutes
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ALTERNATIVE (NO INSTALLATION)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If you don't want to install Python, you can:
+
+1. Use the viewer with STL and OBJ files (no dependencies)
+2. Download FreeCAD (free): https://www.freecadweb.org/
+3. Convert IGES→STL in FreeCAD, then load the STL in the viewer
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RECOMMENDATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Install Python now:
+1. Download from python.org
+2. Run installer
+3. Add to PATH (checkbox)
+4. After restart: pip install pythonocc-core
+
+This is a one-time setup that takes ~15 minutes.
+Then IGES support works forever.
+
+═══════════════════════════════════════════════════════════════════════

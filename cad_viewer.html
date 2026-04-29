@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>CAD Viewer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #3E2723; color: #E8DCC8; font-family: system-ui; height: 100vh; overflow: hidden; }
+
+    #header { position: fixed; top: 0; left: 280px; right: 0; height: 60px; background: linear-gradient(180deg, #5D4037 0%, #4E342E 100%); border-bottom: 2px solid #8B6F47; display: flex; align-items: center; padding: 0 16px; gap: 12px; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+    #toolbar-bottom { position: fixed; bottom: 0; left: 280px; right: 0; height: 50px; background: linear-gradient(180deg, #4E342E 0%, #5D4037 100%); border-top: 2px solid #8B6F47; display: flex; align-items: center; justify-content: center; padding: 0 16px; gap: 8px; z-index: 100; box-shadow: 0 -2px 8px rgba(0,0,0,0.3); }
+    .logo { font-size: 16px; font-weight: 700; color: #D7CCC8; }
+    .btn { padding: 8px 14px; border-radius: 6px; border: none; font-size: 12px; cursor: pointer; background: #8B6F47; color: #FFF; transition: all 0.2s; font-weight: 600; }
+    .btn:hover:not(:disabled) { background: #A0826D; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; background: #6B5344; }
+    .btn.active { background: #6B8E23; box-shadow: 0 0 8px rgba(107,142,35,0.4); }
+    .separator { width: 1px; height: 30px; background: #6B5344; }
+    .color-input { width: 32px; height: 32px; border: 2px solid #8B6F47; border-radius: 4px; cursor: pointer; transition: border 0.2s; }
+    .color-input:hover { border-color: #A0826D; }
+    .info { font-size: 12px; color: #C5B9AD; margin-left: 8px; }
+    .label { font-size: 11px; color: #C5B9AD; margin-right: 4px; font-weight: 600; }
+
+    /* Left sidebar */
+    #sidebar { position: fixed; left: 0; top: 60px; width: 280px; bottom: 0; background: linear-gradient(180deg, #4E342E 0%, #3E2723 100%); border-right: 2px solid #8B6F47; display: flex; flex-direction: column; z-index: 50; }
+    #sidebar-header { padding: 14px; border-bottom: 2px solid #8B6F47; font-size: 15px; font-weight: 700; color: #D7CCC8; }
+    #parts-list { flex: 1; overflow-y: auto; padding: 10px; }
+    .part-item { padding: 12px; margin-bottom: 8px; background: #5D4037; border-radius: 6px; font-size: 14px; display: flex; align-items: center; gap: 8px; cursor: pointer; border: 1px solid #8B6F47; transition: all 0.2s; }
+    .part-item:hover { background: #6B5344; transform: translateX(4px); }
+    .part-item.hidden { opacity: 0.6; background: #453935; }
+    .part-item.selected { background: #6B5344; box-shadow: 0 0 8px rgba(139, 111, 71, 0.6); }
+    .part-toggle { width: 20px; height: 20px; background: #8B6F47; border: 1px solid #A0826D; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+    .part-toggle:hover { background: #A0826D; }
+    .part-toggle.hidden { background: #6B5344; }
+    .part-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #E8DCC8; }
+
+    /* Viewport */
+    #viewport { position: fixed; top: 60px; left: 280px; right: 0; bottom: 50px; }
+    canvas { width: 100%; height: 100%; }
+
+    #axes-container { position: fixed; bottom: 60px; left: 290px; width: 100px; height: 100px; background: rgba(62, 39, 35, 0.8); border: 1px solid #8B6F47; border-radius: 4px; z-index: 50; }
+
+    #hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
+    #hint .icon { font-size: 80px; margin-bottom: 24px; opacity: 0.8; }
+    #hint h2 { font-size: 28px; font-weight: 700; margin-bottom: 12px; color: #D7CCC8; }
+    #hint p { font-size: 15px; color: #C5B9AD; line-height: 1.8; }
+
+    #parts-list::-webkit-scrollbar { width: 8px; }
+    #parts-list::-webkit-scrollbar-track { background: #453935; }
+    #parts-list::-webkit-scrollbar-thumb { background: #8B6F47; border-radius: 4px; }
+    #parts-list::-webkit-scrollbar-thumb:hover { background: #A0826D; }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <span class="logo">▲ CAD Viewer</span>
+  <button class="btn" id="btn" title="Open file">📁</button>
+  <button class="btn" id="fit" title="Fit all to view">↔</button>
+  <span class="info" id="info">Ready</span>
+</div>
+
+<div id="toolbar-bottom">
+  <button class="btn" id="edges" title="Toggle edges">□</button>
+  <input type="color" id="edgeColorPicker" value="#000000" class="color-input" title="Edge color">
+
+  <div class="separator"></div>
+
+  <button class="btn" id="gridToggle" title="Toggle grid">⊞</button>
+
+  <div class="separator"></div>
+
+  <input type="color" id="partColorPicker" value="#3d85c8" class="color-input" title="Part color">
+  <input type="color" id="bgColorPicker" value="#3E2723" class="color-input" title="Background color">
+
+  <div class="separator"></div>
+
+  <button class="btn" id="cut-x" title="Cut X">X</button>
+  <button class="btn" id="cut-y" title="Cut Y">Y</button>
+  <button class="btn" id="cut-z" title="Cut Z">Z</button>
+  <button class="btn" id="cut-clear" title="Clear">✕</button>
+
+  <div class="separator"></div>
+
+  <button class="btn" id="selMode-single" title="Single">⊙</button>
+  <button class="btn" id="selMode-add" title="Add">⊕</button>
+  <button class="btn" id="selMode-connected" title="Connected">⊡</button>
+  <button class="btn" id="selMode-angle" title="Angle">⚡</button>
+  <button class="btn" id="selClear" title="Clear">⊗</button>
+  <button class="btn" id="createPart" title="Create part" style="display:none;">✦</button>
+</div>
+
+<div id="axes-container"></div>
+
+<div id="sidebar">
+  <div id="sidebar-header">📦 Parts</div>
+  <div id="parts-list"></div>
+</div>
+
+<div id="viewport">
+  <canvas id="canvas"></canvas>
+  <div id="hint">
+    <div class="icon">📦</div>
+    <h2>Open a 3D File</h2>
+    <p>Click the button or drag & drop<br>.STL • .OBJ files</p>
+  </div>
+</div>
+
+<input type="file" id="file" accept=".stl,.obj,.iges,.igs" multiple style="display:none">
+
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+
+<script>
+let scene, camera, renderer, controls;
+let parts = [];
+let showEdges = false;
+let edgeColor = 0x000000;
+let partColor = 0x3d85c8;
+let bgColor = 0x3E2723;
+let activeCut = null;
+let grid = null;
+let showGrid = true;
+let cutPlanes = [];
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+let selectedFaces = [];
+let highlightMeshes = [];
+let selectionMode = 'single';
+let selectedFaceIndices = new Map();
+let selectedPartIndex = -1;
+let axesScene, axesCamera, axesRenderer;
+let rotationCenter = new THREE.Vector3(0, 0, 0);
+
+const defaultColors = [
+  0xcccccc, // light gray
+  0x2c9dd8, // blue accent
+  0xff6b35, // orange accent
+  0x888888, // medium gray
+  0x00b36b, // green accent
+  0x505050  // dark gray
+];
+
+function init() {
+  const canvas = document.getElementById('canvas');
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(bgColor);
+
+  camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 100000);
+  camera.position.set(0, 5, 10);
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.shadowMap.enabled = true;
+
+  controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.target.copy(rotationCenter);
+
+  // Better multi-light setup for improved visibility
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+  // Main key light - attached to camera for consistent illumination
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
+  keyLight.position.set(0, 0, 1);
+  camera.add(keyLight);
+
+  // Fill light - world-space from opposite direction to reduce shadows
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.6);
+  fillLight.position.set(-20, -10, -15);
+  scene.add(fillLight);
+
+  // Back light - creates rim lighting for better depth
+  const backLight = new THREE.DirectionalLight(0xffffff, 0.4);
+  backLight.position.set(-15, 10, -20);
+  scene.add(backLight);
+
+  grid = new THREE.GridHelper(100, 100, 0x8B6F47, 0x6B5344);
+  scene.add(grid);
+
+  // Initialize axes helper
+  initAxesHelper();
+
+  window.addEventListener('resize', () => {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  });
+
+  (function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+
+    // Render axes helper
+    if (axesRenderer) {
+      axesCamera.quaternion.copy(camera.quaternion);
+      axesRenderer.render(axesScene, axesCamera);
+    }
+  })();
+}
+
+function fitView() {
+  if (parts.length === 0) return;
+  const box = new THREE.Box3();
+  parts.forEach(p => { if (p.visible) box.expandByObject(p.mesh); });
+  if (box.isEmpty()) return;
+
+  rotationCenter.copy(box.getCenter(new THREE.Vector3()));
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const dist = maxDim * 2;
+
+  controls.target.copy(rotationCenter);
+  camera.position.copy(rotationCenter);
+  camera.position.x += dist * 0.5;
+  camera.position.y += dist * 0.3;
+  camera.position.z += dist * 0.8;
+  camera.lookAt(center);
+  controls.update();
+}
+
+function toggleEdges() {
+  if (parts.length === 0) return;
+  showEdges = !showEdges;
+
+  parts.forEach(p => {
+    if (showEdges) {
+      if (!p.edgesHelper) {
+        const edges = new THREE.EdgesGeometry(p.geometry);
+        const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: edgeColor }));
+        p.edgesHelper = line;
+        p.mesh.add(line);
+      } else {
+        p.edgesHelper.visible = true;
+      }
+    } else {
+      if (p.edgesHelper) p.edgesHelper.visible = false;
+    }
+  });
+
+  document.getElementById('edges').classList.toggle('active', showEdges);
+}
+
+function updateEdgeColor(color) {
+  edgeColor = color;
+  parts.forEach(p => {
+    if (p.edgesHelper) p.edgesHelper.material.color.set(edgeColor);
+  });
+}
+
+function initAxesHelper() {
+  const container = document.getElementById('axes-container');
+  const size = 100;
+
+  axesScene = new THREE.Scene();
+  axesCamera = new THREE.OrthographicCamera(-size, size, size, -size, 0.1, 1000);
+  axesCamera.position.z = 100;
+
+  axesRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  axesRenderer.setSize(size, size);
+  axesRenderer.setPixelRatio(window.devicePixelRatio);
+  container.appendChild(axesRenderer.domElement);
+
+  const axes = new THREE.AxesHelper(40);
+  axesScene.add(axes);
+}
+
+function updateRotationCenter() {
+  if (parts.length === 0) return;
+
+  const bbox = new THREE.Box3();
+  parts.forEach(p => {
+    if (p.visible) bbox.expandByObject(p.mesh);
+  });
+
+  if (bbox.isEmpty()) return;
+
+  rotationCenter.copy(bbox.getCenter(new THREE.Vector3()));
+  if (controls) controls.target.copy(rotationCenter);
+}
+
+function togglePartVisibility(index) {
+  if (index < 0 || index >= parts.length) return;
+  parts[index].visible = !parts[index].visible;
+  parts[index].mesh.visible = parts[index].visible;
+  updateRotationCenter();
+  updatePartsList();
+}
+
+function updatePartsList() {
+  const list = document.getElementById('parts-list');
+  list.innerHTML = '';
+
+  parts.forEach((part, idx) => {
+    const item = document.createElement('div');
+    item.className = 'part-item' + (part.visible ? '' : ' hidden') + (selectedPartIndex === idx ? ' selected' : '');
+    item.style.borderLeft = `4px solid #${part.mesh.material.color.getHexString()}`;
+    item.innerHTML = `
+      <div class="part-toggle ${part.visible ? '' : 'hidden'}" onclick="togglePartVisibility(${idx}); event.stopPropagation();">
+        ${part.visible ? '✓' : ''}
+      </div>
+      <span class="part-name">${part.name}</span>
+    `;
+    item.onclick = () => selectPart(idx);
+    list.appendChild(item);
+  });
+}
+
+function selectPart(idx) {
+  selectedPartIndex = idx;
+  const color = parts[idx].mesh.material.color;
+  document.getElementById('partColorPicker').value = '#' + color.getHexString();
+  updatePartsList();
+  document.getElementById('info').textContent = `Selected: ${parts[idx].name}`;
+}
+
+function applyCut(axis) {
+  if (parts.length === 0) return;
+  activeCut = axis;
+
+  const box = new THREE.Box3();
+  parts.forEach(p => { if (p.visible) box.expandByObject(p.mesh); });
+  const center = box.getCenter(new THREE.Vector3());
+
+  parts.forEach(p => {
+    if (!p.mesh.material.clippingPlanes) p.mesh.material.clippingPlanes = [];
+
+    if (axis === 'x') {
+      const plane = new THREE.Plane(new THREE.Vector3(1, 0, 0), -center.x);
+      p.mesh.material.clippingPlanes = [plane];
+    } else if (axis === 'y') {
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -center.y);
+      p.mesh.material.clippingPlanes = [plane];
+    } else if (axis === 'z') {
+      const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -center.z);
+      p.mesh.material.clippingPlanes = [plane];
+    }
+  });
+
+  renderer.localClippingEnabled = true;
+  document.getElementById('cut-x').classList.toggle('active', axis === 'x');
+  document.getElementById('cut-y').classList.toggle('active', axis === 'y');
+  document.getElementById('cut-z').classList.toggle('active', axis === 'z');
+}
+
+function clearCut() {
+  activeCut = null;
+  parts.forEach(p => {
+    p.mesh.material.clippingPlanes = [];
+  });
+  renderer.localClippingEnabled = false;
+  document.getElementById('cut-x').classList.remove('active');
+  document.getElementById('cut-y').classList.remove('active');
+  document.getElementById('cut-z').classList.remove('active');
+
+  cutPlanes.forEach(plane => scene.remove(plane));
+  cutPlanes = [];
+}
+
+function toggleGrid() {
+  if (grid) {
+    showGrid = !showGrid;
+    grid.visible = showGrid;
+    document.getElementById('gridToggle').classList.toggle('active', showGrid);
+  }
+}
+
+function clearSelection() {
+  selectedFaceIndices.clear();
+  highlightMeshes.forEach(m => scene.remove(m));
+  highlightMeshes = [];
+  document.getElementById('info').textContent = 'Selection cleared';
+  document.getElementById('createPart').style.display = 'none';
+}
+
+function selectConnectedFaces(mesh, startTriangleIdx) {
+  const pos = mesh.geometry.getAttribute('position');
+  const triCount = pos.count / 3;
+  const tolerance = 0.001;
+
+  const edgeMap = new Map();
+  for (let i = 0; i < triCount; i++) {
+    const i0 = i * 3, i1 = i * 3 + 1, i2 = i * 3 + 2;
+    const v0 = new THREE.Vector3(pos.getX(i0), pos.getY(i0), pos.getZ(i0));
+    const v1 = new THREE.Vector3(pos.getX(i1), pos.getY(i1), pos.getZ(i1));
+    const v2 = new THREE.Vector3(pos.getX(i2), pos.getY(i2), pos.getZ(i2));
+
+    const edges = [[v0, v1], [v1, v2], [v2, v0]];
+    edges.forEach(edge => {
+      const key = [edge[0], edge[1]].map(v => `${v.x.toFixed(5)},${v.y.toFixed(5)},${v.z.toFixed(5)}`).sort().join('|');
+      if (!edgeMap.has(key)) edgeMap.set(key, []);
+      edgeMap.get(key).push(i);
+    });
+  }
+
+  const connected = [startTriangleIdx];
+  const queue = [startTriangleIdx];
+  const visited = new Set([startTriangleIdx]);
+
+  while (queue.length > 0) {
+    const triIdx = queue.shift();
+    const i0 = triIdx * 3, i1 = triIdx * 3 + 1, i2 = triIdx * 3 + 2;
+    const v0 = new THREE.Vector3(pos.getX(i0), pos.getY(i0), pos.getZ(i0));
+    const v1 = new THREE.Vector3(pos.getX(i1), pos.getY(i1), pos.getZ(i1));
+    const v2 = new THREE.Vector3(pos.getX(i2), pos.getY(i2), pos.getZ(i2));
+
+    const edges = [[v0, v1], [v1, v2], [v2, v0]];
+    edges.forEach(edge => {
+      const key = [edge[0], edge[1]].map(v => `${v.x.toFixed(5)},${v.y.toFixed(5)},${v.z.toFixed(5)}`).sort().join('|');
+      const neighbors = edgeMap.get(key) || [];
+      neighbors.forEach(n => {
+        if (!visited.has(n)) {
+          visited.add(n);
+          connected.push(n);
+          queue.push(n);
+        }
+      });
+    });
+  }
+
+  return connected;
+}
+
+function selectByAngle(mesh, startTriangleIdx, angleDegrees) {
+  const pos = mesh.geometry.getAttribute('position');
+  const triCount = pos.count / 3;
+  const angleRad = (angleDegrees * Math.PI) / 180;
+
+  const getFaceNormal = (triIdx) => {
+    const i0 = triIdx * 3, i1 = triIdx * 3 + 1, i2 = triIdx * 3 + 2;
+    const v0 = new THREE.Vector3(pos.getX(i0), pos.getY(i0), pos.getZ(i0));
+    const v1 = new THREE.Vector3(pos.getX(i1), pos.getY(i1), pos.getZ(i1));
+    const v2 = new THREE.Vector3(pos.getX(i2), pos.getY(i2), pos.getZ(i2));
+    const edge0 = v1.clone().sub(v0);
+    const edge1 = v2.clone().sub(v0);
+    return edge0.cross(edge1).normalize();
+  };
+
+  const startNormal = getFaceNormal(startTriangleIdx);
+  const matches = [startTriangleIdx];
+
+  for (let i = 0; i < triCount; i++) {
+    if (i === startTriangleIdx) continue;
+    const normal = getFaceNormal(i);
+    const angleBetween = Math.acos(Math.max(-1, Math.min(1, startNormal.dot(normal))));
+    if (angleBetween <= angleRad || Math.abs(angleBetween - Math.PI) <= angleRad) {
+      matches.push(i);
+    }
+  }
+
+  return matches;
+}
+
+function updateHighlights() {
+  highlightMeshes.forEach(m => scene.remove(m));
+  highlightMeshes = [];
+
+  selectedFaceIndices.forEach((faces, meshKey) => {
+    const [partIdx, meshId] = meshKey.split('-');
+    const mesh = parts[partIdx].mesh;
+    const posAttr = mesh.geometry.getAttribute('position');
+    const idx = mesh.geometry.getIndex();
+
+    faces.forEach(faceIndex => {
+      const a = idx ? idx.getX(faceIndex * 3) : faceIndex * 3;
+      const b = idx ? idx.getX(faceIndex * 3 + 1) : faceIndex * 3 + 1;
+      const c = idx ? idx.getX(faceIndex * 3 + 2) : faceIndex * 3 + 2;
+
+      const v1 = new THREE.Vector3(posAttr.getX(a), posAttr.getY(a), posAttr.getZ(a));
+      const v2 = new THREE.Vector3(posAttr.getX(b), posAttr.getY(b), posAttr.getZ(b));
+      const v3 = new THREE.Vector3(posAttr.getX(c), posAttr.getY(c), posAttr.getZ(c));
+
+      const geom = new THREE.BufferGeometry();
+      geom.setFromPoints([v1, v2, v3]);
+
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xffff00,
+        emissive: 0xffff00,
+        transparent: true,
+        opacity: 0.8
+      });
+
+      const m = new THREE.Mesh(geom, mat);
+      m.position.copy(mesh.position);
+      m.rotation.copy(mesh.rotation);
+      m.scale.copy(mesh.scale);
+      scene.add(m);
+      highlightMeshes.push(m);
+    });
+  });
+
+  document.getElementById('info').textContent = `Selected ${selectedFaceIndices.size} mesh(es) with faces`;
+}
+
+function createPartFromSelection() {
+  if (selectedFaceIndices.size === 0) {
+    document.getElementById('info').textContent = 'No faces selected';
+    return;
+  }
+
+  let newColor = prompt('Enter color (hex, e.g., #FF0000):', '#FF6600');
+  if (!newColor) return;
+
+  try {
+    newColor = parseInt(newColor.slice(1), 16);
+  } catch (e) {
+    newColor = 0xFF6600;
+  }
+
+  const vertices = [];
+
+  selectedFaceIndices.forEach((faces, meshKey) => {
+    const [partIdx] = meshKey.split('-');
+    const mesh = parts[partIdx].mesh;
+    const posAttr = mesh.geometry.getAttribute('position');
+    const idx = mesh.geometry.getIndex();
+
+    faces.forEach(faceIndex => {
+      const a = idx ? idx.getX(faceIndex * 3) : faceIndex * 3;
+      const b = idx ? idx.getX(faceIndex * 3 + 1) : faceIndex * 3 + 1;
+      const c = idx ? idx.getX(faceIndex * 3 + 2) : faceIndex * 3 + 2;
+
+      vertices.push(
+        new THREE.Vector3(posAttr.getX(a), posAttr.getY(a), posAttr.getZ(a)),
+        new THREE.Vector3(posAttr.getX(b), posAttr.getY(b), posAttr.getZ(b)),
+        new THREE.Vector3(posAttr.getX(c), posAttr.getY(c), posAttr.getZ(c))
+      );
+    });
+  });
+
+  const newGeom = new THREE.BufferGeometry();
+  newGeom.setFromPoints(vertices);
+
+  const material = new THREE.MeshPhongMaterial({ color: newColor, side: THREE.DoubleSide });
+  const newMesh = new THREE.Mesh(newGeom, material);
+
+  scene.add(newMesh);
+
+  parts.push({
+    name: `Extracted-${parts.length}`,
+    mesh: newMesh,
+    visible: true,
+    geometry: newGeom,
+    edgesHelper: null
+  });
+
+  selectedPartIndex = parts.length - 1;
+  document.getElementById('partColorPicker').value = '#' + newMesh.material.color.getHexString();
+  updatePartsList();
+  clearSelection();
+  document.getElementById('info').textContent = `✓ Created part: Extracted-${parts.length - 1}`;
+}
+
+function parseSTL(data) {
+  let text;
+
+  if (typeof data === 'string') {
+    text = data;
+  } else {
+    const view = new DataView(data);
+    const header = new TextDecoder().decode(new Uint8Array(data.slice(0, 5)));
+
+    if (header === 'solid') {
+      text = new TextDecoder().decode(data);
+    } else {
+      const faces = view.getUint32(80, true);
+      const geometry = new THREE.BufferGeometry();
+      const vertices = [], normals = [];
+
+      let offset = 84;
+      for (let i = 0; i < faces; i++) {
+        const nx = view.getFloat32(offset, true); offset += 4;
+        const ny = view.getFloat32(offset, true); offset += 4;
+        const nz = view.getFloat32(offset, true); offset += 4;
+
+        for (let j = 0; j < 3; j++) {
+          vertices.push(view.getFloat32(offset, true)); offset += 4;
+          vertices.push(view.getFloat32(offset, true)); offset += 4;
+          vertices.push(view.getFloat32(offset, true)); offset += 4;
+          normals.push(nx, ny, nz);
+        }
+        offset += 2;
+      }
+
+      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+      geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normals), 3));
+      return geometry;
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  const vertices = [];
+  const normals = [];
+
+  const facetPattern = /facet normal\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)[\s\S]*?outer loop([\s\S]*?)endloop/g;
+  const vertexPattern = /vertex\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)/g;
+
+  let facetMatch;
+  while ((facetMatch = facetPattern.exec(text))) {
+    const nx = parseFloat(facetMatch[1]);
+    const ny = parseFloat(facetMatch[3]);
+    const nz = parseFloat(facetMatch[5]);
+    const loopContent = facetMatch[7];
+
+    let vertexMatch;
+    const loopVertices = [];
+    while ((vertexMatch = vertexPattern.exec(loopContent))) {
+      loopVertices.push([
+        parseFloat(vertexMatch[1]),
+        parseFloat(vertexMatch[3]),
+        parseFloat(vertexMatch[5])
+      ]);
+    }
+
+    for (let v of loopVertices) {
+      vertices.push(v[0], v[1], v[2]);
+      normals.push(nx, ny, nz);
+    }
+  }
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normals), 3));
+  return geometry;
+}
+
+async function convertIGEStoSTL(file) {
+  try {
+    document.getElementById('info').textContent = `⟳ Converting ${file.name} to STL...`;
+
+    const formData = new FormData();
+    const buffer = await file.arrayBuffer();
+    formData.append('file', new Blob([buffer], { type: 'application/octet-stream' }));
+
+    const response = await fetch('/convert-iges', {
+      method: 'POST',
+      body: buffer,
+      headers: { 'Content-Type': 'application/octet-stream' }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Conversion failed');
+    }
+
+    const stlBuffer = await response.arrayBuffer();
+    const stlFile = new File([stlBuffer], file.name.split('.')[0] + '.stl', { type: 'application/octet-stream' });
+
+    return stlFile;
+  } catch (err) {
+    throw new Error(`IGES conversion failed: ${err.message}`);
+  }
+}
+
+async function loadFile(file) {
+  try {
+    let fileToLoad = file;
+
+    // Convert IGES to STL if needed
+    if (file.name.toLowerCase().endsWith('.iges') || file.name.toLowerCase().endsWith('.igs')) {
+      fileToLoad = await convertIGEStoSTL(file);
+    }
+
+    const geometry = parseSTL(await fileToLoad.arrayBuffer());
+    const name = fileToLoad.name.split('.')[0];
+
+    // Don't center geometry - let bounding box determine rotation center
+    geometry.computeBoundingBox();
+
+    // Assign different color to each part
+    const partColorValue = defaultColors[parts.length % defaultColors.length];
+    const material = new THREE.MeshPhongMaterial({ color: partColorValue, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    parts.push({
+      name: name,
+      mesh: mesh,
+      visible: true,
+      geometry: geometry,
+      edgesHelper: null
+    });
+
+    // Auto-select the newly loaded part
+    selectedPartIndex = parts.length - 1;
+    document.getElementById('partColorPicker').value = '#' + material.color.getHexString();
+
+    updateRotationCenter();
+    updatePartsList();
+    document.getElementById('hint').style.display = 'none';
+    document.getElementById('fit').disabled = false;
+    document.getElementById('edges').disabled = false;
+    document.getElementById('cut-x').disabled = false;
+    document.getElementById('cut-y').disabled = false;
+    document.getElementById('cut-z').disabled = false;
+    document.getElementById('cut-clear').disabled = false;
+    document.getElementById('colorPicker').disabled = false;
+    document.getElementById('info').textContent = `✓ ${parts.length} part(s) loaded (selected: ${name})`;
+
+    fitView();
+  } catch (err) {
+    document.getElementById('info').textContent = `❌ Error: ${err.message}`;
+  }
+}
+
+document.getElementById('btn').onclick = () => document.getElementById('file').click();
+document.getElementById('file').onchange = async (e) => {
+  for (let file of e.target.files) {
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.stl') || name.endsWith('.obj') || name.endsWith('.iges') || name.endsWith('.igs')) {
+      await loadFile(file);
+    }
+  }
+};
+
+document.getElementById('fit').onclick = fitView;
+document.getElementById('edges').onclick = toggleEdges;
+document.getElementById('gridToggle').onclick = toggleGrid;
+
+document.getElementById('edgeColorPicker').onchange = (e) => {
+  edgeColor = parseInt(e.target.value.slice(1), 16);
+  updateEdgeColor(edgeColor);
+};
+
+document.getElementById('partColorPicker').onchange = (e) => {
+  const color = parseInt(e.target.value.slice(1), 16);
+  if (selectedPartIndex >= 0 && selectedPartIndex < parts.length) {
+    parts[selectedPartIndex].mesh.material.color.set(color);
+    updatePartsList();
+    document.getElementById('info').textContent = `Color updated: ${parts[selectedPartIndex].name}`;
+  } else {
+    document.getElementById('info').textContent = 'Select a part first';
+  }
+};
+
+document.getElementById('bgColorPicker').onchange = (e) => {
+  bgColor = parseInt(e.target.value.slice(1), 16);
+  scene.background.setHex(bgColor);
+};
+
+document.getElementById('cut-x').onclick = () => applyCut('x');
+document.getElementById('cut-y').onclick = () => applyCut('y');
+document.getElementById('cut-z').onclick = () => applyCut('z');
+document.getElementById('cut-clear').onclick = clearCut;
+
+document.getElementById('selMode-single').onclick = () => {
+  selectionMode = 'single';
+  document.querySelectorAll('[id^="selMode-"]').forEach(b => b.classList.remove('active'));
+  document.getElementById('selMode-single').classList.add('active');
+  document.getElementById('info').textContent = 'Selection mode: Single';
+};
+
+document.getElementById('selMode-add').onclick = () => {
+  selectionMode = 'add';
+  document.querySelectorAll('[id^="selMode-"]').forEach(b => b.classList.remove('active'));
+  document.getElementById('selMode-add').classList.add('active');
+  document.getElementById('info').textContent = 'Selection mode: Add (double-click to add)';
+};
+
+document.getElementById('selMode-connected').onclick = () => {
+  selectionMode = 'connected';
+  document.querySelectorAll('[id^="selMode-"]').forEach(b => b.classList.remove('active'));
+  document.getElementById('selMode-connected').classList.add('active');
+  document.getElementById('info').textContent = 'Selection mode: Connected (double-click to select connected)';
+};
+
+document.getElementById('selMode-angle').onclick = () => {
+  selectionMode = 'angle';
+  document.querySelectorAll('[id^="selMode-"]').forEach(b => b.classList.remove('active'));
+  document.getElementById('selMode-angle').classList.add('active');
+  document.getElementById('info').textContent = 'Selection mode: By Angle (select similar angle faces)';
+};
+
+document.getElementById('selClear').onclick = clearSelection;
+document.getElementById('createPart').onclick = createPartFromSelection;
+
+// Don't activate any selection mode by default
+selectionMode = 'single';
+
+const viewport = document.getElementById('viewport');
+
+viewport.addEventListener('click', (e) => {
+  if (e.button !== 0) return;
+
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const allMeshes = parts.map(p => p.mesh);
+  const intersects = raycaster.intersectObjects(allMeshes);
+
+  if (intersects.length === 0) {
+    clearSelection();
+    return;
+  }
+
+  const intersection = intersects[0];
+  const mesh = intersection.object;
+  const partIndex = parts.findIndex(p => p.mesh === mesh);
+  const clickPoint = intersection.point;
+
+  if (partIndex === -1) {
+    clearSelection();
+    return;
+  }
+
+  const geom = mesh.geometry;
+  const pos = geom.getAttribute('position');
+
+  if (!pos) {
+    clearSelection();
+    return;
+  }
+
+  let closestTriangle = -1;
+  let closestDist = Infinity;
+  const triCount = pos.count / 3;
+
+  for (let i = 0; i < triCount; i++) {
+    const i0 = i * 3;
+    const i1 = i * 3 + 1;
+    const i2 = i * 3 + 2;
+
+    const v0 = new THREE.Vector3(pos.getX(i0), pos.getY(i0), pos.getZ(i0));
+    const v1 = new THREE.Vector3(pos.getX(i1), pos.getY(i1), pos.getZ(i1));
+    const v2 = new THREE.Vector3(pos.getX(i2), pos.getY(i2), pos.getZ(i2));
+
+    v0.applyMatrix4(mesh.matrixWorld);
+    v1.applyMatrix4(mesh.matrixWorld);
+    v2.applyMatrix4(mesh.matrixWorld);
+
+    const pa = clickPoint.clone().sub(v0);
+    const pb = clickPoint.clone().sub(v1);
+    const pc = clickPoint.clone().sub(v2);
+
+    const edge0 = v1.clone().sub(v0);
+    const edge1 = v2.clone().sub(v1);
+    const edge2 = v0.clone().sub(v2);
+
+    const n = edge0.clone().cross(edge1);
+    const dist = Math.abs(pa.dot(n)) / n.length();
+
+    if (dist < closestDist) {
+      closestDist = dist;
+      closestTriangle = i;
+    }
+  }
+
+  if (closestTriangle === -1 || closestDist > 10) {
+    clearSelection();
+    return;
+  }
+
+  const meshKey = `${partIndex}-${mesh.id}`;
+
+  if (selectionMode === 'single') {
+    selectedFaceIndices.clear();
+    selectedFaceIndices.set(meshKey, [closestTriangle]);
+    updateHighlights();
+    document.getElementById('createPart').style.display = 'block';
+    document.getElementById('info').textContent = `Selected triangle ${closestTriangle}`;
+  } else if (selectionMode === 'add') {
+    if (!selectedFaceIndices.has(meshKey)) {
+      selectedFaceIndices.set(meshKey, []);
+    }
+    const faces = selectedFaceIndices.get(meshKey);
+    if (!faces.includes(closestTriangle)) {
+      faces.push(closestTriangle);
+      updateHighlights();
+      document.getElementById('createPart').style.display = 'block';
+      document.getElementById('info').textContent = `Added triangle ${closestTriangle} (${faces.length} total)`;
+    }
+  } else if (selectionMode === 'connected') {
+    selectedFaceIndices.clear();
+    const connectedFaces = selectConnectedFaces(mesh, closestTriangle);
+    selectedFaceIndices.set(meshKey, connectedFaces);
+    updateHighlights();
+    document.getElementById('createPart').style.display = 'block';
+    document.getElementById('info').textContent = `Selected ${connectedFaces.length} connected triangle(s)`;
+  } else if (selectionMode === 'angle') {
+    selectedFaceIndices.clear();
+    const angleMatchFaces = selectByAngle(mesh, closestTriangle, 30);
+    selectedFaceIndices.set(meshKey, angleMatchFaces);
+    updateHighlights();
+    document.getElementById('createPart').style.display = 'block';
+    document.getElementById('info').textContent = `Selected ${angleMatchFaces.length} triangle(s) with similar angle`;
+  }
+});
+
+viewport.addEventListener('dragover', (e) => e.preventDefault());
+viewport.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  for (let file of e.dataTransfer.files) {
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.stl') || name.endsWith('.obj') || name.endsWith('.iges') || name.endsWith('.igs')) {
+      await loadFile(file);
+    }
+  }
+});
+
+init();
+</script>
+</body>
+</html>

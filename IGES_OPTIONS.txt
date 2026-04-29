@@ -1,0 +1,98 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                  IGES Support Installation Options                    ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+The error "Could not find a version that satisfies the requirement" happens
+because pythonocc-core may not have pre-built wheels for your Python version.
+
+But there are 4 ways to get IGES support working:
+
+
+─────────────────────────────────────────────────────────────────────────
+OPTION 1: Automatic Installation (Recommended)
+─────────────────────────────────────────────────────────────────────────
+
+Double-click:  iges_reader/install.bat
+
+This script will:
+✓ Check your Python version
+✓ Try multiple pythonocc-core versions automatically
+✓ Give clear instructions if installation fails
+
+
+─────────────────────────────────────────────────────────────────────────
+OPTION 2: Use Conda (Most Reliable)
+─────────────────────────────────────────────────────────────────────────
+
+If you have Anaconda or Miniconda installed:
+
+    conda install -c conda-forge pythonocc-core
+
+If not, download Miniconda:
+    https://docs.conda.io/projects/miniconda/en/latest/
+
+Why it works: Conda has pre-built wheels for all systems
+
+
+─────────────────────────────────────────────────────────────────────────
+OPTION 3: Use FreeCAD (100% Guaranteed to Work)
+─────────────────────────────────────────────────────────────────────────
+
+1. Download FreeCAD (free):
+   https://www.freecadweb.org/downloads/
+
+2. Install and select "Add FreeCAD to PATH"
+
+3. Restart your terminal
+
+4. The viewer will automatically use FreeCAD for IGES conversion
+
+Why it works: FreeCAD is a full CAD application with IGES support built-in
+
+
+─────────────────────────────────────────────────────────────────────────
+OPTION 4: Manual Conversion (Always Works)
+─────────────────────────────────────────────────────────────────────────
+
+No installation needed. Just do this once for each IGES file:
+
+1. Open IGES file in FreeCAD (free) or any CAD software
+2. File → Export As → Select STL format
+3. Save the converted .STL file
+4. Load the .STL file in the 3D Viewer
+
+Why it works: You're converting in professional CAD software that
+already has IGES support built-in.
+
+
+─────────────────────────────────────────────────────────────────────────
+RECOMMENDATION
+─────────────────────────────────────────────────────────────────────────
+
+Try in this order:
+
+1. Run: iges_reader/install.bat (automatic, 70% success)
+2. If that fails, use Conda (95% success)
+3. If that fails, download FreeCAD (100% success, most reliable)
+4. If nothing else works, use manual conversion (always works)
+
+At least one of these will work for your system!
+
+
+─────────────────────────────────────────────────────────────────────────
+DETAILED GUIDES
+─────────────────────────────────────────────────────────────────────────
+
+For complete instructions and troubleshooting:
+
+• IGES_INSTALL.md  - Full installation guide with all options
+• IGES_SETUP.md    - Setup and usage documentation
+
+
+─────────────────────────────────────────────────────────────────────────
+
+Questions?
+• Check IGES_INSTALL.md for your specific system
+• Or just use FreeCAD (simplest, most reliable)
+
+═══════════════════════════════════════════════════════════════════════

@@ -1,0 +1,114 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                   CAD Viewer — How to Use                            ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+WHAT THIS IS
+─────────────
+A browser-based 3D viewer for CAD files. Load STL files directly, or open
+STEP files and they'll be automatically converted to STL for viewing.
+Everything runs on your own computer — no files uploaded anywhere.
+
+
+REQUIREMENTS
+─────────────
+1. Python 3.6+ (free, from https://www.python.org/downloads/)
+   • During install, tick ✅ "Add Python to PATH"
+2. Google Chrome (or Edge/Firefox)
+3. First setup: Install dependencies with setup.bat
+
+
+FIRST-TIME SETUP
+─────────────────
+1. To use .STL and .OBJ files:
+   • Just run start.bat (no setup needed)
+
+2. To use .IGES files (optional):
+   • Open command prompt in this folder
+   • Run:  pip install pythonocc-core==7.7.2
+   • Takes 2–5 minutes (it's a large package)
+   • See IGES_SETUP.md for detailed instructions
+
+
+HOW TO START
+─────────────
+1. Double-click  start.bat
+2. A terminal window will appear — keep it open
+3. Chrome opens automatically with the viewer
+4. Click "📁 Open" to select files or drag & drop
+5. STEP files are converted to STL automatically
+
+
+CONTROLS
+─────────
+  Rotate    Left-click and drag
+  Pan       Right-click and drag (or Shift + left-click)
+  Zoom      Scroll wheel
+  Fit View  Click the "⬜ Fit" button
+
+
+TOOLBAR BUTTONS
+────────────────
+  📁 Open         Browse for .STL, .OBJ files
+  ⬜ Fit          Fit all visible parts to view
+  🔲 Edges        Toggle edge outlines on/off
+  Color picker    Change edge color
+  ✂️ Cut X/Y/Z    Section cut along axis (click to clear)
+
+
+PART TREE (Left Sidebar)
+─────────────────────────
+• Shows all loaded parts/files
+• Click the ☑ checkbox to show/hide individual parts
+• Multiple files can be loaded and shown together
+
+
+SUPPORTED FILE TYPES
+──────────────────────
+  ✅ .STL   (Stereolithography - loads directly)
+  ✅ .OBJ   (Wavefront OBJ - loads directly)
+  ✅ .IGES  (IGES CAD files - auto-converted to STL) *
+  ✅ .IGS   (IGES variant - auto-converted to STL) *
+
+  * Requires pythonocc-core. See IGES_SETUP.md for details.
+
+
+IMPORTANT: STEP CONVERSION
+────────────────────────────
+The first time you open a STEP file, it's converted to STL on your computer.
+This takes 5-30 seconds depending on file complexity. The viewer shows
+"⟳ Converting..." during this process. After conversion, the STL is
+displayed exactly like a native STL file.
+
+
+STOPPING THE VIEWER
+─────────────────────
+Press  Ctrl + C  in the terminal window, then close it.
+
+
+TROUBLESHOOTING
+─────────────────
+• "Python not found"
+  → Install from python.org and tick "Add to PATH"
+
+• "IGES support not available"
+  → Install pythonocc-core: pip install pythonocc-core==7.7.2
+  → Restart the server
+  → See IGES_SETUP.md for details
+
+• IGES conversion is slow
+  → Complex geometries can take 10-60 seconds
+  → This is normal for large assemblies
+  → Check the terminal for progress
+
+• Port 8080 already in use
+  → Edit server.py and change: PORT = 8080 to PORT = 8081
+
+• File loads but shows nothing
+  → The model may be very large or very small
+  → Try the "⬜ Fit" button to auto-zoom to contents
+
+• IGES file looks wrong after conversion
+  → Try converting in FreeCAD instead: File > Export As > STL
+  → Or re-export IGES from source CAD application
+
+═══════════════════════════════════════════════════════════════════════
